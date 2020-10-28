@@ -22,7 +22,11 @@ from Queue import Queue
 from Queue import Empty
 
 from os.path import expanduser
+
+import actionlib
 home = expanduser("~")
+
+import time
 
 # Arm command
 # Enumeration
@@ -43,8 +47,8 @@ class MoveItController():
         self._as = actionlib.SimpleActionServer(name=self._action_name, ActionSpec=PlatformGoalAction, execute_cb=self.execute_cb,auto_start=False)
 
         # create messages that are used to publish feedback/result
-        self._feedback = maara_platform_control.msg.PlatformGoalFeedback()
-        self._result   = maara_platform_control.msg.PlatformGoalResult()
+        self._feedback = PlatformGoalFeedback()
+        self._result   = PlatformGoalResult()
 
         self._as.start()
 
@@ -58,12 +62,22 @@ class MoveItController():
             do_actuate  = (command == ACTUATE)
 
             print("Goal")
+            
             print(target_pose)
             
-            self.ur.set_ee_link(arm_command.ee_id.data)
-            self.ur.go_to_pose_goal_cont(arm_command.target_pose)
+            self.ur.set_ee_link(goal.link_id.data)
+            plan = self.ur.go_to_pose_goal_cont(goal.target_pose)
+            print(self.ur.get_current_pose())
 
-            while not self.ur.at_goal(arm_command.target_pose):
+
+            if not plan:
+                print("PLAN FAILED",plan)
+                #stop excess movement
+                self.ur.stop_moving()
+                success = False
+                return
+
+            while not self.ur.at_goal(goal.target_pose):
                 if self._as.is_preempt_requested():
                     self._as.set_preempted()
                     #stop excess movement
@@ -71,7 +85,7 @@ class MoveItController():
                     success = False
                     break
                 
-                current_state = self.ur.get_current_sate()
+                current_state = self.ur.get_current_state()
                 print(current_state)
                 # Publish feedback
                 # Feedback is it is moving and doing the current action
@@ -89,12 +103,12 @@ class MoveItController():
           
         if success:
             rospy.loginfo('%s: Succeeded' % self._action_name)
-            self.result.status = STOP
+            self._result.status = STOP
             self._as.set_succeeded(self._result)
 
 def main():
     rospy.init_node('moveit_server', anonymous=True)
-    platform_controller = MoveItController()
+    platform_controller = MoveItController("server")
 
     while not rospy.is_shutdown():
         pass

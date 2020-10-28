@@ -238,9 +238,13 @@ class MoveGroupPythonInterface(object):
     ## We can plan a motion for this group to a desired pose for the
     ## end-effector:
     self.move_group.set_pose_target(pose_goal)
-
+    plan = self.move_group.plan()
+    if len(plan.joint_trajectory.joint_names) ==0 and len(plan.joint_trajectory.points)==0:
+        print("PLAN FAILED")
+        return False
     # Now, we call the planner to compute the plan and execute it.
-    plan = self.move_group.go(wait=False)
+    self.move_group.go(wait=False)
+    return True
    
   def set_ee_link(self, link_id):
     if link_id == "":
@@ -323,7 +327,8 @@ class MoveGroupPythonInterface(object):
     return plan, fraction
 
     ## END_SUB_TUTORIAL
-
+  def get_current_state(self):
+    return self.robot.get_current_state()
 
   def display_trajectory(self, plan):
     # Copy class variables to local variables to make the web tutorials more clear.
