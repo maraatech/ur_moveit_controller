@@ -22,8 +22,9 @@ cd ~/catkin_workspace && catkin_make
 ```
 ## Running
 ```
+roslaunch ur_uoa_description startup.launch # see note
+roslaunch ur5_moveit_config move_group.launch
 rosrun ur_moveit_controller control_node.py 
 ```
 ### *note
-requires arm controller node to run
-e.g- ```roslaunch ur_uoa_description startup.launch ```
+may vary depending on the arm controller used.
