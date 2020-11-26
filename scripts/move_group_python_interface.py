@@ -243,7 +243,7 @@ class MoveGroupPythonInterface(object):
         print("PLAN FAILED")
         return False
     # Now, we call the planner to compute the plan and execute it.
-    self.move_group.go(wait=False)
+    self.move_group.go(wait=True)
     return True
    
   def set_ee_link(self, link_id):

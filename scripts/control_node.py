@@ -76,10 +76,11 @@ class MoveItController():
                 self.ur.stop_moving()
                 success = False
                 return
-
+            prev_state = None
             while not self.ur.at_goal(goal.target_pose):
                 if self._as.is_preempt_requested():
                     self._as.set_preempted()
+                    print("PREEMPTED!!")
                     #stop excess movement
                     self.ur.stop_moving()
                     success = False
@@ -92,6 +93,9 @@ class MoveItController():
                 self._feedback.status = MOVE
                 self._as.publish_feedback(self._feedback)
                 time.sleep(0.1)
+                prev_state = current_state
+                print("only should come here if failed.......")
+                break
 
             #stop excess movement
             self.ur.stop_moving()
