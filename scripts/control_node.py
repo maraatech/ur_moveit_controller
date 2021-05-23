@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import rospy
 import roslib
 import tf
@@ -18,8 +18,8 @@ from math import pi
 import numpy as np
 import cv2
 
-from Queue import Queue
-from Queue import Empty
+from queue import Queue
+from queue import Empty
 
 from os.path import expanduser
 
@@ -52,6 +52,16 @@ class MoveItController():
 
         self._as.start()
 
+        current_state = self.ur.get_current_pose()
+        print(current_state)
+
+        # current_state.position.x = 0.00
+        # current_state.position.y = 0.75
+        # current_state.position.z = 0.75
+        # self.ur.go_to_pose_goal(current_state)
+
+        # print(current_state)
+
     def execute_cb(self, goal):
         success = True
 
@@ -62,20 +72,22 @@ class MoveItController():
             do_actuate  = (command == ACTUATE)
 
             print("Goal")
-            
             print(target_pose)
-            
-            self.ur.set_ee_link(goal.link_id.data)
-            plan = self.ur.go_to_pose_goal_cont(goal.target_pose)
-            print(self.ur.get_current_pose())
 
+            print("Link ID")
+            print(link_id)
+            
+            self.ur.set_ee_link(link_id)
+            plan = self.ur.go_to_pose_goal_cont(goal.target_pose)
 
             if not plan:
-                print("PLAN FAILED",plan)
+                print("Plan not found aborting ")
                 #stop excess movement
                 self.ur.stop_moving()
                 success = False
+                self._as.set_aborted()
                 return
+
             prev_state = None
             while not self.ur.at_goal(goal.target_pose):
                 if self._as.is_preempt_requested():
@@ -94,7 +106,6 @@ class MoveItController():
                 self._as.publish_feedback(self._feedback)
                 time.sleep(0.1)
                 prev_state = current_state
-                print("only should come here if failed.......")
                 break
 
             #stop excess movement
