@@ -40,9 +40,9 @@ ACTUATE = 3
 
 class MoveItController():
     
-    def __init__(self, name):
+    def __init__(self, name, planning_time=5.0):
         self._action_name = name
-        self.ur = MoveGroupPythonInterface()
+        self.ur = MoveGroupPythonInterface(planning_time=planning_time)
 
         self._as = actionlib.SimpleActionServer(name=self._action_name, ActionSpec=PlatformGoalAction, execute_cb=self.execute_cb,auto_start=False)
 
@@ -53,7 +53,7 @@ class MoveItController():
         self._as.start()
 
         current_state = self.ur.get_current_pose()
-        print(current_state)
+        rospy.loginfo(current_state)
 
         # current_state.position.x = 0.00
         # current_state.position.y = 0.75
@@ -63,7 +63,6 @@ class MoveItController():
         # print(current_state)
 
     def execute_cb(self, goal):
-        success = True
 
         command = goal.command
         if command == MOVE or command == ACTUATE:
@@ -71,59 +70,63 @@ class MoveItController():
             link_id     = goal.link_id.data
             do_actuate  = (command == ACTUATE)
 
-            print("Goal")
-            print(target_pose)
+            rospy.loginfo("Goal")
+            rospy.loginfo(target_pose)
 
-            print("Link ID")
-            print(link_id)
+            rospy.loginfo("Link ID")
+            rospy.loginfo(link_id)
             
             self.ur.set_ee_link(link_id)
             plan = self.ur.go_to_pose_goal_cont(goal.target_pose)
 
             if not plan:
-                print("Plan not found aborting ")
+                rospy.logerr("Plan not found aborting ")
                 #stop excess movement
                 self.ur.stop_moving()
-                success = False
                 self._as.set_aborted()
                 return
 
-            prev_state = None
             while not self.ur.at_goal(goal.target_pose):
                 if self._as.is_preempt_requested():
                     self._as.set_preempted()
-                    print("PREEMPTED!!")
+                    rospy.loginfo("Preempted!")
                     #stop excess movement
                     self.ur.stop_moving()
                     success = False
                     break
-                
+
                 current_state = self.ur.get_current_state()
-                print(current_state)
+                rospy.loginfo(current_state)
+
                 # Publish feedback
                 # Feedback is it is moving and doing the current action
                 self._feedback.status = MOVE
                 self._as.publish_feedback(self._feedback)
                 time.sleep(0.1)
-                prev_state = current_state
-                break
 
-            #stop excess movement
-            self.ur.stop_moving()
+                break
+            else:
+                #stop excess movement
+                self.ur.stop_moving()
 
         elif command == STOP:
             self.ur.stop_moving()
         else:
-            print("Unkown Command type: "+str(command))
+            rospy.logerr("Unkown Command type: "+str(command))
           
-        if success:
+        if self.ur.at_goal(goal.target_pose):
             rospy.loginfo('%s: Succeeded' % self._action_name)
             self._result.status = STOP
             self._as.set_succeeded(self._result)
+        # else:
+        #     self._as.set_aborted()
+
 
 def main():
     rospy.init_node('moveit_server', anonymous=True)
-    platform_controller = MoveItController("server")
+    planning_time = rospy.get_param("~planning_time", 5.0)
+
+    platform_controller = MoveItController("server", planning_time)
 
     while not rospy.is_shutdown():
         pass

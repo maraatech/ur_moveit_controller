@@ -82,7 +82,7 @@ def all_close(goal, actual, tolerance):
 
 class MoveGroupPythonInterface(object):
   """MoveGroupPythonInterface"""
-  def __init__(self):
+  def __init__(self, planning_time=5.0):
     super(MoveGroupPythonInterface, self).__init__()
 
     ## BEGIN_SUB_TUTORIAL setup
@@ -107,6 +107,7 @@ class MoveGroupPythonInterface(object):
     ## This interface can be used to plan and execute motions:
     group_name = "manipulator"
     move_group = moveit_commander.MoveGroupCommander(group_name)
+    move_group.set_planning_time(planning_time)
     # move_group.set_end_effector_link("pick_point")
     
     topic = 'visualization_marker'
@@ -167,6 +168,7 @@ class MoveGroupPythonInterface(object):
     # Calling ``stop()`` ensures that there is no residual movement
     self.move_group.stop()
 
+
     # For testing:
     current_joints = self.move_group.get_current_joint_values()
     return all_close(joint_goal, current_joints, 0.01)
@@ -218,6 +220,7 @@ class MoveGroupPythonInterface(object):
   #plan a pose goal.  return true if plan successful
   def plan_pose_goal(self, pose_goal):
       self.move_group.set_pose_target(pose_goal)
+
       plan = self.move_group.plan()
       return plan[0]
   
@@ -236,13 +239,15 @@ class MoveGroupPythonInterface(object):
     ## ^^^^^^^^^^^^^^^^^^^^^^^
     ## We can plan a motion for this group to a desired pose for the
     ## end-effector:
+    
     self.move_group.set_pose_target(pose_goal)
+
     plan = self.move_group.plan()
     success = plan[0]
     # print(plan)
 
     if not success:
-      print("No plan found")
+      rospy.logwarn("No plan found")
       return False
     # Now, we call the planner to compute the plan and execute it.
     self.move_group.go(wait=True)
