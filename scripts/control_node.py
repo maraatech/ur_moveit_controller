@@ -28,6 +28,8 @@ home = expanduser("~")
 
 import time
 
+from actionlib_msgs.msg import GoalStatusArray
+
 # Arm command
 # Enumeration
 # 0 Move
@@ -65,6 +67,7 @@ class MoveItController():
     def execute_cb(self, goal):
         success = True
 
+        status = 0
         command = goal.command
         if command == MOVE or command == ACTUATE:
             target_pose = goal.target_pose
@@ -81,32 +84,38 @@ class MoveItController():
             plan = self.ur.go_to_pose_goal_cont(goal.target_pose)
 
             if not plan:
-                print("Plan not found aborting ")
+                print("Plan not found aborting")
                 #stop excess movement
                 self.ur.stop_moving()
                 success = False
                 self._as.set_aborted()
-                return
+            else:
+                rospy.sleep(1)
+                while True:
+                    if self._as.is_preempt_requested():
+                        self._as.set_preempted()
+                        print("Goal Preempted")
+                        #stop excess movement
+                        self.ur.stop_moving()
+                        success = False
+                        break
+                    
+                    arm_status = rospy.wait_for_message("move_group/status", GoalStatusArray, timeout=None)
+                    current_status = arm_status.status_list[len(arm_status.status_list)-1]
 
-            prev_state = None
-            while not self.ur.at_goal(goal.target_pose):
-                if self._as.is_preempt_requested():
-                    self._as.set_preempted()
-                    print("PREEMPTED!!")
-                    #stop excess movement
-                    self.ur.stop_moving()
-                    success = False
-                    break
-                
-                current_state = self.ur.get_current_state()
-                print(current_state)
-                # Publish feedback
-                # Feedback is it is moving and doing the current action
-                self._feedback.status = MOVE
-                self._as.publish_feedback(self._feedback)
-                time.sleep(0.1)
-                prev_state = current_state
-                break
+                    status = current_status.status
+                    
+                    if status == current_status.SUCCEEDED:
+                        success = True
+                        break
+                    elif status != current_status.ACTIVE:
+                        success = False
+                        break
+
+                    # Publish feedback
+                    self._feedback.status = status
+                    self._as.publish_feedback(self._feedback)
+                    rospy.sleep(0.1)
 
             #stop excess movement
             self.ur.stop_moving()
@@ -118,7 +127,7 @@ class MoveItController():
           
         if success:
             rospy.loginfo('%s: Succeeded' % self._action_name)
-            self._result.status = STOP
+            self._result.status = status
             self._as.set_succeeded(self._result)
 
 def main():

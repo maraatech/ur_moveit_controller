@@ -245,7 +245,7 @@ class MoveGroupPythonInterface(object):
       print("No plan found")
       return False
     # Now, we call the planner to compute the plan and execute it.
-    self.move_group.go(wait=True)
+    self.move_group.go(wait=False)
     return True
    
   def set_ee_link(self, link_id):
