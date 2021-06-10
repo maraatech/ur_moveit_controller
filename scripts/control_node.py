@@ -121,7 +121,8 @@ class MoveItController():
             rospy.loginfo('%s: Succeeded' % self._action_name)
             self._result.status = status
             self._as.set_succeeded(self._result)
-        self._as.set_aborted()
+        else:
+            self._as.set_aborted()
 
 def main():
     rospy.init_node('moveit_server', anonymous=True)
