@@ -57,13 +57,6 @@ class MoveItController():
         current_state = self.ur.get_current_pose()
         print(current_state)
 
-        # current_state.position.x = 0.00
-        # current_state.position.y = 0.75
-        # current_state.position.z = 0.75
-        # self.ur.go_to_pose_goal(current_state)
-
-        # print(current_state)
-
     def execute_cb(self, goal):
         success = True
 
