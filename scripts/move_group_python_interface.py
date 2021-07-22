@@ -105,6 +105,7 @@ class MoveGroupPythonInterface(object):
     ## If you are using a different robot, change this value to the name of your robot
     ## arm planning group.
     ## This interface can be used to plan and execute motions:
+    # group_name = "a/manipulator"
     group_name = "manipulator"
     move_group = moveit_commander.MoveGroupCommander(group_name)
     # move_group.set_end_effector_link("pick_point")
