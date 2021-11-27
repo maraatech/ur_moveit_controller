@@ -62,28 +62,17 @@ class MoveItController():
             if self._as.is_preempt_requested():
                 self._as.set_preempted()
                 rospy.loginfo("Goal Preempted")
-                #stop excess movement
-                self.ur.stop_moving()
                 return False
             
             arm_status = rospy.wait_for_message(topic, GoalStatusArray, timeout=None)
-
-
             if len(arm_status.status_list) > 0:
                 current_status = arm_status.status_list[len(arm_status.status_list)-1]
                 status = current_status.status
-                print(current_status.status)
                 
                 if status == current_status.SUCCEEDED:
                     return True
                 elif status != current_status.ACTIVE:
                     return False
-
-                # Publish feedback
-                self._feedback.status = status
-                self._as.publish_feedback(self._feedback)
-                rospy.sleep(0.1)
-
 
 
 
@@ -119,7 +108,12 @@ class MoveItController():
                 self.ur.stop_moving()
                 success = False
             else:
-                self.monitor_status(status_topic)
+                status = self.monitor_status(status_topic)
+
+            # Publish feedback
+            self._feedback.status = status
+            self._as.publish_feedback(self._feedback)
+            rospy.sleep(0.1)
 
             #stop excess movement
             self.ur.stop_moving()
@@ -127,7 +121,7 @@ class MoveItController():
         elif command == STOP:
             self.ur.stop_moving()
         else:
-            print("Unkown Command type: "+str(command))
+            rospy.loginfo("Unkown Command type: "+str(command))
           
         if success:
             rospy.loginfo('%s: Succeeded' % self._action_name)

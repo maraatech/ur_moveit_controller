@@ -255,13 +255,12 @@ class MoveGroupPythonInterface(object):
     success = plan[0]
     # print(plan)
 
-    if not success:
-      rospy.loginfo("No plan found")
-      return False
-    # Now, we call the planner to compute the plan and execute it.
-    self.move_group.go(wait=False)
-    return True
-   
+    if success:
+      self.move_group.go(wait=False)
+      return plan
+    
+
+    
   def set_ee_link(self, link_id):
     if link_id == "":
       link_id = "ee_link" #default
