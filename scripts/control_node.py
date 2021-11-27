@@ -58,21 +58,25 @@ class MoveItController():
         rospy.loginfo(current_state)
 
     def monitor_status(self, topic="move_group/status"):
-         while True:
+        while True:
             if self._as.is_preempt_requested():
                 self._as.set_preempted()
                 rospy.loginfo("Goal Preempted")
                 return False
             
             arm_status = rospy.wait_for_message(topic, GoalStatusArray, timeout=None)
-            if len(arm_status.status_list) > 0:
-                current_status = arm_status.status_list[len(arm_status.status_list)-1]
-                status = current_status.status
-                
-                if status == current_status.SUCCEEDED:
-                    return True
-                elif status != current_status.ACTIVE:
-                    return False
+            current_status = arm_status.status_list[len(arm_status.status_list)-1]
+            status = current_status.status
+            
+            if status == current_status.SUCCEEDED:
+                return True
+            elif status != current_status.ACTIVE:
+                return False
+
+            # Publish feedback
+            self._feedback.status = status
+            self._as.publish_feedback(self._feedback)
+            rospy.sleep(0.1)
 
 
 
@@ -108,12 +112,8 @@ class MoveItController():
                 self.ur.stop_moving()
                 success = False
             else:
-                status = self.monitor_status(status_topic)
+                success = self.monitor_status(status_topic)
 
-            # Publish feedback
-            self._feedback.status = status
-            self._as.publish_feedback(self._feedback)
-            rospy.sleep(0.1)
 
             #stop excess movement
             self.ur.stop_moving()
@@ -129,7 +129,6 @@ class MoveItController():
             self._as.set_succeeded(self._result)
         else:
             rospy.loginfo('%s: Aborted' % self._action_name)
-
             self._as.set_aborted()
 
 def main():
