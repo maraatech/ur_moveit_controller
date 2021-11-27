@@ -50,7 +50,7 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 from math import pi
 from std_msgs.msg import String
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 from moveit_commander.conversions import pose_to_list
 import visualization_msgs
 import time
@@ -82,7 +82,7 @@ def all_close(goal, actual, tolerance):
 
 class MoveGroupPythonInterface(object):
   """MoveGroupPythonInterface"""
-  def __init__(self):
+  def __init__(self, planning_time=1.0):
     super(MoveGroupPythonInterface, self).__init__()
 
     ## BEGIN_SUB_TUTORIAL setup
@@ -108,11 +108,14 @@ class MoveGroupPythonInterface(object):
     # group_name = "a/manipulator"
     group_name = "manipulator"
     move_group = moveit_commander.MoveGroupCommander(group_name)
+
+
     # move_group.set_end_effector_link("pick_point")
+    move_group.set_planning_time(planning_time)
     
     topic = 'visualization_marker'
 
-    marker_publisher = rospy.Publisher(topic+"_2", Marker ,queue_size=20)
+    marker_publisher = rospy.Publisher(topic+"_2", MarkerArray, queue_size=20)
     
 
     ## Create a `DisplayTrajectory`_ ROS publisher which is used to display
@@ -173,52 +176,39 @@ class MoveGroupPythonInterface(object):
     return all_close(joint_goal, current_joints, 0.01)
 
 
-  #this was so I could add a marker which would show up in Rviz
-  def add_marker(self, pose_goal, pose_id):
+  def pose_marker(self, pose_goal, pose_id):
       marker = Marker()
-      marker.header.frame_id = "base_link"
       marker.id = pose_id
+      marker.header.frame_id = "base_link"
+
 
       marker.type = marker.SPHERE
       marker.action = marker.ADD
     
       marker.pose = pose_goal
-      t = rospy.Duration()
-      marker.lifetime = t
+      marker.lifetime = rospy.Duration()
       marker.scale.x = 0.02
       marker.scale.y = 0.02
       marker.scale.z = 0.02
       marker.color.a = 1.0
       marker.color.r = 1.0
-      #take this out later
-      # while self.marker_publisher.get_num_connections() == 0:
-      #   time.sleep(0.1)
-      self.marker_publisher.publish(marker)
-  
-  def add_marker_green(self, pose_goal, pose_id):
-      marker = Marker()
-      marker.header.frame_id = "base_link"
-      marker.id = pose_id
+      return marker
 
-      marker.type = marker.SPHERE
-      marker.action = marker.ADD
-    
-      marker.pose = pose_goal
-      t = rospy.Duration()
-      marker.lifetime = t
-      marker.scale.x = 0.02
-      marker.scale.y = 0.02
-      marker.scale.z = 0.02
-      marker.color.a = 1.0
-      marker.color.g = 1.0
+  #this was so I could add a marker which would show up in Rviz
+  def add_marker(self, pose_goals, pose_id):
+      markers = MarkerArray()
+      markers.markers = [self.pose_marker(pose_goal, pose_id) for pose_goal in pose_goals]
+     
       #take this out later
       # while self.marker_publisher.get_num_connections() == 0:
       #   time.sleep(0.1)
-      self.marker_publisher.publish(marker)
+      self.marker_publisher.publish(markers)
+  
+
 
   #plan a pose goal.  return true if plan successful
-  def plan_pose_goal(self, pose_goal):
-      self.move_group.set_pose_target(pose_goal)
+  def plan_pose_goal(self, pose_goals):
+      self.move_group.set_pose_targets(pose_goals)
       plan = self.move_group.plan()
       return plan[0]
   
@@ -229,21 +219,44 @@ class MoveGroupPythonInterface(object):
     # Note: there is no equivalent function for clear_joint_value_targets()
     self.move_group.clear_pose_targets()
 
+
   #plan and go to pose goal    
-  def go_to_pose_goal_cont(self, pose_goal):
+  def follow_cartesian_path(self, pose_goals, success_threshold=1.0):
+    current_pose = self.move_group.get_current_pose().pose
+
+    if all_close(pose_goals[0], current_pose, 0.01):
+      pose_goals = pose_goals[1:]
+
+
+    (plan, fraction) = self.move_group.compute_cartesian_path(
+                                       pose_goals,   # waypoints to follow
+                                       0.01,        # eef_step
+                                       0.0)         # jump_threshold
+
+    rospy.loginfo(f"planned cartesian path {fraction*100}%")
+    
+    self.move_group.execute(plan, wait=False)
+    return plan
+
+
+  #plan and go to pose goal    
+  def go_to_pose_goal_cont(self, pose_goals):
     ## BEGIN_SUB_TUTORIAL plan_to_pose
     ##
     ## Planning to a Pose Goal
     ## ^^^^^^^^^^^^^^^^^^^^^^^
     ## We can plan a motion for this group to a desired pose for the
     ## end-effector:
-    self.move_group.set_pose_target(pose_goal)
+    for pose_goal in pose_goals:
+      self.add_marker(pose_goals, "pose_goal")
+
+    self.move_group.set_pose_targets(pose_goals)
     plan = self.move_group.plan()
     success = plan[0]
     # print(plan)
 
     if not success:
-      print("No plan found")
+      rospy.loginfo("No plan found")
       return False
     # Now, we call the planner to compute the plan and execute it.
     self.move_group.go(wait=False)
@@ -255,14 +268,14 @@ class MoveGroupPythonInterface(object):
     self.move_group.set_end_effector_link(link_id)
 
   #plan and go to pose goal    
-  def go_to_pose_goal(self, pose_goal):
+  def go_to_pose_goal(self, pose_goals):
     ## BEGIN_SUB_TUTORIAL plan_to_pose
     ##
     ## Planning to a Pose Goal
     ## ^^^^^^^^^^^^^^^^^^^^^^^
     ## We can plan a motion for this group to a desired pose for the
     ## end-effector:
-    self.move_group.set_pose_target(pose_goal)
+    self.move_group.set_pose_targets(pose_goals)
 
     # Now, we call the planner to compute the plan and execute it.
     plan = self.move_group.go(wait=True)
@@ -279,57 +292,31 @@ class MoveGroupPythonInterface(object):
     # Note that since this section of code will not be included in the tutorials
     # we use the class variable rather than the copied state variable
     current_pose = self.move_group.get_current_pose().pose
-    return all_close(pose_goal, current_pose, 0.01)
+
+    for pose_goal in pose_goals:
+      if all_close(pose_goal, current_pose, 0.01):
+        return True
+      
+    return False
 
 
-  def at_goal(self, pose_goal):
+  def at_goal(self, pose_goals):
     current_pose = self.move_group.get_current_pose().pose
-    return all_close(pose_goal, current_pose, 0.01)
+
+    for pose_goal in pose_goals:
+      if all_close(pose_goal, current_pose, 0.01):
+        return True
+      
+    return False
 
   #publish marker if we can make it to a pose goal
-  def publish_pose_marker(self, pose_goal):
+  def publish_pose_marker(self, pose_goals, pose_id):
     # Now, we call the planner to compute the plan and execute it.
     #plan = move_group.go(wait=True)
-    if self.plan_pose_goal(pose_goal):
-        self.add_marker(pose_goal, pose_id)
+    if self.plan_pose_goal(pose_goals):
+        self.add_marker(pose_goals, pose_id)
     
 
-  def plan_cartesian_path(self, scale=1):
-    ## BEGIN_SUB_TUTORIAL plan_cartesian_path
-    ##
-    ## Cartesian Paths
-    ## ^^^^^^^^^^^^^^^
-    ## You can plan a Cartesian path directly by specifying a list of waypoints
-    ## for the end-effector to go through. If executing  interactively in a
-    ## Python shell, set scale = 1.0.
-    ##
-    waypoints = []
-
-    wpose = self.move_group.get_current_pose().pose
-    wpose.position.z -= scale * 0.1  # First move up (z)
-    wpose.position.y += scale * 0.2  # and sideways (y)
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.x += scale * 0.1  # Second move forward/backwards in (x)
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.y -= scale * 0.1  # Third move sideways (y)
-    waypoints.append(copy.deepcopy(wpose))
-
-    # We want the Cartesian path to be interpolated at a resolution of 1 cm
-    # which is why we will specify 0.01 as the eef_step in Cartesian
-    # translation.  We will disable the jump threshold by setting it to 0.0,
-    # ignoring the check for infeasible jumps in joint space, which is sufficient
-    # for this tutorial.
-    (plan, fraction) = self.move_group.compute_cartesian_path(
-                                       waypoints,   # waypoints to follow
-                                       0.01,        # eef_step
-                                       0.0)         # jump_threshold
-
-    # Note: We are just planning, not asking move_group to actually move the robot yet:
-    return plan, fraction
-
-    ## END_SUB_TUTORIAL
   def get_current_state(self):
     return self.robot.get_current_state()
 

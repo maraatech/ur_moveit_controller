@@ -55,7 +55,37 @@ class MoveItController():
         self._as.start()
 
         current_state = self.ur.get_current_pose()
-        print(current_state)
+        rospy.loginfo(current_state)
+
+    def monitor_status(self, topic="move_group/status"):
+         while True:
+            if self._as.is_preempt_requested():
+                self._as.set_preempted()
+                rospy.loginfo("Goal Preempted")
+                #stop excess movement
+                self.ur.stop_moving()
+                return False
+            
+            arm_status = rospy.wait_for_message(topic, GoalStatusArray, timeout=None)
+
+
+            if len(arm_status.status_list) > 0:
+                current_status = arm_status.status_list[len(arm_status.status_list)-1]
+                status = current_status.status
+                print(current_status.status)
+                
+                if status == current_status.SUCCEEDED:
+                    return True
+                elif status != current_status.ACTIVE:
+                    return False
+
+                # Publish feedback
+                self._feedback.status = status
+                self._as.publish_feedback(self._feedback)
+                rospy.sleep(0.1)
+
+
+
 
     def execute_cb(self, goal):
         success = True
@@ -63,51 +93,33 @@ class MoveItController():
         status = 0
         command = goal.command
         if command == MOVE or command == ACTUATE:
-            target_pose = goal.target_pose
+            target_poses = goal.target_poses
             link_id     = goal.link_id.data
             do_actuate  = (command == ACTUATE)
 
-            print("Goal")
-            print(target_pose)
+            rospy.loginfo("Goals")
+            rospy.loginfo(target_poses)
 
-            print("Link ID")
-            print(link_id)
+            rospy.loginfo("Link ID")
+            rospy.loginfo(link_id)
             
             self.ur.set_ee_link(link_id)
-            plan = self.ur.go_to_pose_goal_cont(goal.target_pose)
 
-            if not plan:
-                print("Plan not found aborting")
+            if goal.cartesian_path:
+                plan = self.ur.follow_cartesian_path(goal.target_poses)
+                status_topic = "scaled_pos_joint_traj_controller/follow_joint_trajectory/status"
+            else:
+                plan = self.ur.go_to_pose_goal_cont(goal.target_poses)
+                status_topic = "move_group/status"
+            
+            
+            if plan is None:
+                rospy.loginfo("Plan not found aborting")
                 #stop excess movement
                 self.ur.stop_moving()
                 success = False
             else:
-                rospy.sleep(1)
-                while True:
-                    if self._as.is_preempt_requested():
-                        self._as.set_preempted()
-                        print("Goal Preempted")
-                        #stop excess movement
-                        self.ur.stop_moving()
-                        success = False
-                        break
-                    
-                    arm_status = rospy.wait_for_message("move_group/status", GoalStatusArray, timeout=None)
-                    current_status = arm_status.status_list[len(arm_status.status_list)-1]
-
-                    status = current_status.status
-                    
-                    if status == current_status.SUCCEEDED:
-                        success = True
-                        break
-                    elif status != current_status.ACTIVE:
-                        success = False
-                        break
-
-                    # Publish feedback
-                    self._feedback.status = status
-                    self._as.publish_feedback(self._feedback)
-                    rospy.sleep(0.1)
+                self.monitor_status(status_topic)
 
             #stop excess movement
             self.ur.stop_moving()
@@ -122,6 +134,8 @@ class MoveItController():
             self._result.status = status
             self._as.set_succeeded(self._result)
         else:
+            rospy.loginfo('%s: Aborted' % self._action_name)
+
             self._as.set_aborted()
 
 def main():
