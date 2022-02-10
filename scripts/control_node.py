@@ -42,9 +42,9 @@ ACTUATE = 3
 
 class MoveItController():
     
-    def __init__(self, name):
+    def __init__(self, name, move_group_name):
         self._action_name = name
-        self.ur = MoveGroupPythonInterface()
+        self.ur = MoveGroupPythonInterface(move_group_name)
 
         self._as = actionlib.SimpleActionServer(name=self._action_name, ActionSpec=PlatformGoalAction, execute_cb=self.execute_cb,auto_start=False)
 
@@ -126,7 +126,9 @@ class MoveItController():
 
 def main():
     rospy.init_node('moveit_server', anonymous=True)
-    platform_controller = MoveItController("server")
+
+    move_group_name = rospy.get_param('~move_group_name', "manipulator")
+    platform_controller = MoveItController(move_group_name+"_server", move_group_name)
 
     while not rospy.is_shutdown():
         pass

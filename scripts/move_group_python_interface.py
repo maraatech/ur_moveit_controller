@@ -41,6 +41,29 @@
 ## and a `RobotCommander`_ class. More on these below. We also import `rospy`_ and some messages that we will use:
 ##
 
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+# Create archie moveit controller and handle two action servers
+# Tidy this arm controller arm generally
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+## TODO
+
 import sys
 import copy
 import rospy
@@ -55,7 +78,6 @@ from moveit_commander.conversions import pose_to_list
 import visualization_msgs
 import time
 ## END_SUB_TUTORIAL
-
 
 def all_close(goal, actual, tolerance):
   """
@@ -82,7 +104,7 @@ def all_close(goal, actual, tolerance):
 
 class MoveGroupPythonInterface(object):
   """MoveGroupPythonInterface"""
-  def __init__(self):
+  def __init__(self, move_group_name):
     super(MoveGroupPythonInterface, self).__init__()
 
     ## BEGIN_SUB_TUTORIAL setup
@@ -106,13 +128,13 @@ class MoveGroupPythonInterface(object):
     ## arm planning group.
     ## This interface can be used to plan and execute motions:
     # group_name = "a/manipulator"
-    group_name = "manipulator"
-    move_group = moveit_commander.MoveGroupCommander(group_name)
+    move_group = moveit_commander.MoveGroupCommander(move_group_name)
     # move_group.set_end_effector_link("pick_point")
+    # move_group.set_pose_reference_frame("base_link")
     
     topic = 'visualization_marker'
 
-    marker_publisher = rospy.Publisher(topic+"_2", Marker ,queue_size=20)
+    marker_publisher = rospy.Publisher(topic, Marker ,queue_size=20)
     
 
     ## Create a `DisplayTrajectory`_ ROS publisher which is used to display
