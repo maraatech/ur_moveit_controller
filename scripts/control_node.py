@@ -2,11 +2,11 @@
 import rospy
 import roslib
 import tf
-import math 
+import math
 
 from cv_bridge import CvBridge
 
-from platform_msgs.msg import PlatformGoalAction, PlatformGoalGoal, PlatformGoalFeedback, PlatformGoalResult
+from cares_msgs.msg import PlatformGoalAction, PlatformGoalGoal, PlatformGoalFeedback, PlatformGoalResult
 from geometry_msgs.msg import Pose, Point, PointStamped, Quaternion
 
 import message_filters
@@ -41,7 +41,7 @@ RESET=2
 ACTUATE = 3
 
 class MoveItController():
-    
+
     def __init__(self, name, move_group_name):
         self._action_name = name
         self.ur = MoveGroupPythonInterface(move_group_name)
@@ -72,7 +72,7 @@ class MoveItController():
 
             print("Link ID")
             print(link_id)
-            
+
             self.ur.set_ee_link(link_id)
             plan = self.ur.go_to_pose_goal_cont(goal.target_pose)
 
@@ -91,12 +91,12 @@ class MoveItController():
                         self.ur.stop_moving()
                         success = False
                         break
-                    
+
                     arm_status = rospy.wait_for_message("move_group/status", GoalStatusArray, timeout=None)
                     current_status = arm_status.status_list[len(arm_status.status_list)-1]
 
                     status = current_status.status
-                    
+
                     if status == current_status.SUCCEEDED:
                         success = True
                         break
@@ -116,7 +116,7 @@ class MoveItController():
             self.ur.stop_moving()
         else:
             print("Unkown Command type: "+str(command))
-          
+
         if success:
             rospy.loginfo('%s: Succeeded' % self._action_name)
             self._result.status = status
@@ -132,7 +132,7 @@ def main():
 
     while not rospy.is_shutdown():
         pass
-    
+
 if __name__ == '__main__':
     try:
         main()
