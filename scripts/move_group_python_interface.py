@@ -129,6 +129,7 @@ class MoveGroupPythonInterface(object):
     ## This interface can be used to plan and execute motions:
     # group_name = "a/manipulator"
     move_group = moveit_commander.MoveGroupCommander(move_group_name)
+    move_group.set_planning_time(10)
     # move_group.set_end_effector_link("pick_point")
     # move_group.set_pose_reference_frame("base_link")
     
