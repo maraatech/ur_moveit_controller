@@ -274,7 +274,7 @@ class MoveGroupPythonInterface(object):
    
   def set_ee_link(self, link_id):
     if link_id == "":
-      link_id = "ee_link" #default
+      link_id = "flange" #default
     self.move_group.set_end_effector_link(link_id)
 
   #plan and go to pose goal    

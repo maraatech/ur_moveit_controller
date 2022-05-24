@@ -30,42 +30,30 @@ import time
 
 from actionlib_msgs.msg import GoalStatusArray
 
-# Arm command
-# Enumeration
-# 0 Move
-# 1 Stop
-# 2 Reset
-MOVE=0
-STOP=1
-RESET=2
-ACTUATE = 3
-
 class MoveItController():
 
     def __init__(self, name, move_group_name):
         self._action_name = name
-        self.ur = MoveGroupPythonInterface(move_group_name)
-
-        self._as = actionlib.SimpleActionServer(name=self._action_name, ActionSpec=PlatformGoalAction, execute_cb=self.execute_cb,auto_start=False)
-
-        # create messages that are used to publish feedback/result
-        self._feedback = PlatformGoalFeedback()
-        self._result   = PlatformGoalResult()
-
-        self._as.start()
-
-        current_state = self.ur.get_current_pose()
+        self.arm_interface = MoveGroupPythonInterface(move_group_name)
+        current_state = self.arm_interface.get_current_pose()
         print(current_state)
 
-    def execute_cb(self, goal):
-        success = True
+        self.control_server = actionlib.SimpleActionServer(name=self._action_name, ActionSpec=PlatformGoalAction, execute_cb=self.execute_cb,auto_start=False)
 
+        # create messages that are used to publish feedback/result
+        self.feedback = PlatformGoalFeedback()
+        self.result   = PlatformGoalResult()
+
+        self.control_server.start()
+
+
+    def execute_cb(self, goal):
         status = 0
         command = goal.command
-        if command == MOVE or command == ACTUATE:
+        if command == goal.MOVE or command == goal.ACTUATE:
             target_pose = goal.target_pose
             link_id     = goal.link_id.data
-            do_actuate  = (command == ACTUATE)
+            do_actuate  = (command == goal.ACTUATE)
 
             print("Goal")
             print(target_pose)
@@ -73,56 +61,57 @@ class MoveItController():
             print("Link ID")
             print(link_id)
 
-            self.ur.set_ee_link(link_id)
-            plan = self.ur.go_to_pose_goal_cont(goal.target_pose)
+            self.arm_interface.set_ee_link(link_id)
+            plan = self.arm_interface.go_to_pose_goal_cont(goal.target_pose)
 
             if not plan:
                 print("Plan not found aborting")
                 #stop excess movement
-                self.ur.stop_moving()
-                success = False
-            else:
-                rospy.sleep(1)
-                while True:
-                    if self._as.is_preempt_requested():
-                        self._as.set_preempted()
-                        print("Goal Preempted")
-                        #stop excess movement
-                        self.ur.stop_moving()
-                        success = False
-                        break
+                self.arm_interface.stop_moving()
+                self.control_server.set_aborted()
+                return
 
-                    arm_status = rospy.wait_for_message("move_group/status", GoalStatusArray, timeout=None)
-                    current_status = arm_status.status_list[len(arm_status.status_list)-1]
+            r = rospy.Rate(10)
+            while True:
+                if rospy.is_shutdown():
+                    self.control_server.set_aborted()
+                    return
 
-                    status = current_status.status
+                if self.control_server.is_preempt_requested():
+                    self.control_server.set_preempted()
+                    print("Goal Preempted")
+                    #stop excess movement
+                    self.arm_interface.stop_moving()
+                    return
 
-                    if status == current_status.SUCCEEDED:
-                        success = True
-                        break
-                    elif status != current_status.ACTIVE:
-                        success = False
-                        break
+                arm_status = rospy.wait_for_message("move_group/status", GoalStatusArray, timeout=None)
+                current_status = arm_status.status_list[len(arm_status.status_list)-1]
 
-                    # Publish feedback
-                    self._feedback.status = status
-                    self._as.publish_feedback(self._feedback)
-                    rospy.sleep(0.1)
+                status = current_status.status
+                if status == current_status.SUCCEEDED:
+                    break
+                elif status != current_status.ACTIVE:
+                    self.control_server.set_aborted()
+                    return
+
+                # Publish feedback
+                self.feedback.status = status
+                self.control_server.publish_feedback(self.feedback)
+                r.sleep()
 
             #stop excess movement
-            self.ur.stop_moving()
+            self.arm_interface.stop_moving()
 
-        elif command == STOP:
-            self.ur.stop_moving()
+        elif command == goal.STOP:
+            self.arm_interface.stop_moving()
         else:
             print("Unkown Command type: "+str(command))
+            self.control_server.set_aborted()
+            return
 
-        if success:
-            rospy.loginfo('%s: Succeeded' % self._action_name)
-            self._result.status = status
-            self._as.set_succeeded(self._result)
-        else:
-            self._as.set_aborted()
+        rospy.loginfo('%s: Succeeded' % self._action_name)
+        self.result.status = status
+        self.control_server.set_succeeded(self.result)
 
 def main():
     rospy.init_node('moveit_server', anonymous=True)
@@ -130,8 +119,7 @@ def main():
     move_group_name = rospy.get_param('~move_group_name', "manipulator")
     platform_controller = MoveItController(move_group_name+"_server", move_group_name)
 
-    while not rospy.is_shutdown():
-        pass
+    rospy.spin()
 
 if __name__ == '__main__':
     try:
