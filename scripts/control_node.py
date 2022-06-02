@@ -28,6 +28,8 @@ home = expanduser("~")
 
 import time
 
+import cares_lib_ros.utils as utils
+from cares_lib_ros.action_client import ActionClient
 from actionlib_msgs.msg import GoalStatusArray
 
 class MoveItController():
@@ -45,7 +47,6 @@ class MoveItController():
         self.result   = PlatformGoalResult()
 
         self.control_server.start()
-
 
     def execute_cb(self, goal):
         status = 0
@@ -80,7 +81,6 @@ class MoveItController():
                 if self.control_server.is_preempt_requested():
                     self.control_server.set_preempted()
                     print("Goal Preempted")
-                    #stop excess movement
                     self.arm_interface.stop_moving()
                     return
 
