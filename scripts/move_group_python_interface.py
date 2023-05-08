@@ -64,7 +64,7 @@ class MoveGroupPythonInterface(object):
     ## This interface can be used to plan and execute motions:
     # group_name = "a/manipulator"
     move_group = moveit_commander.MoveGroupCommander(move_group_name)
-    move_group.set_planning_time(5)
+    move_group.set_planning_time(2.0)
     # move_group.set_end_effector_link("pick_point")
     # move_group.set_pose_reference_frame("base_link")
     
@@ -189,6 +189,7 @@ class MoveGroupPythonInterface(object):
 
   #plan and go to pose goal    
   def go_to_pose_goal_cont(self, pose_goal):
+    print(pose_goal)
     ## BEGIN_SUB_TUTORIAL plan_to_pose
     ##
     ## Planning to a Pose Goal
@@ -196,6 +197,7 @@ class MoveGroupPythonInterface(object):
     ## We can plan a motion for this group to a desired pose for the
     ## end-effector:
     self.move_group.set_pose_target(pose_goal)
+
     plan = self.move_group.plan()
     success = plan[0]
     # print(plan)
