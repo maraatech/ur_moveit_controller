@@ -42,6 +42,7 @@ class MoveGroupPythonInterface(object):
   def __init__(self, move_group_name):
     super(MoveGroupPythonInterface, self).__init__()
 
+
     ## BEGIN_SUB_TUTORIAL setup
     ##
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
@@ -113,6 +114,8 @@ class MoveGroupPythonInterface(object):
     self.eef_link = eef_link
     self.group_names = group_names
     self.marker_publisher = marker_publisher
+
+    #Get Default planning value
     rospy.sleep(2)
 
   def go_to_joint_state(self, joint_goal):
@@ -200,7 +203,7 @@ class MoveGroupPythonInterface(object):
 
     plan = self.move_group.plan()
     success = plan[0]
-    # print(plan)
+    print(f"Plan Success: {plan[0]}")
 
     if not success:
       print("No plan found")
