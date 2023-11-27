@@ -125,19 +125,24 @@ result = client.status.result
 Types of constraints available:
 1) Orientation Constraints:
 
-   a) Between Orientation - constrains valid orientation for given link id to the region between the vector angles for current and target pose
+   a) Default Orientation Constraint - uses the default constraint type, this is set via rosparams usually in the launch file
+   
+   b) Between Orientation - constrains valid orientation for given link id to the region between the vector angles for current and target pose
 
-   b) Fixed - Orientation - constrains valid oreintation to keep given link_id at a fixed orientation
+   c) Fixed Orientation - constrains valid orientation to keep given link_id at a fixed orientation
 
-   c) No Orientation - No orientation constraints
+   d) No Orientation - No orientation constraints
 2) Volume Constraints:
 
-   a) Box - constraints valid region to a box volume between current and target positions
-   
-   b) Cylinder -  constraints valid region to a cyclindrical volume between current and target positions
+   a) Default Volume Constraint - uses the default constraint type, this is set via rosparams usually in the launch file
 
-   c) Shere - constraints valid region to a spherical volume between current and target positions
-   d) No Volume - No volume constraints
+   b) Box - constraints valid region to a box volume between current and target positions
+   
+   c) Cylinder -  constraints valid region to a cyclindrical volume between current and target positions
+
+   d) Shere - constraints valid region to a spherical volume between current and target positions
+
+   e) No Volume - No volume constraints
 3) Time constraints:
 * Allowed Planning Time - sets the time for a single plan attempt
 * Max Retries - maximum number of planning attempts before giving up
