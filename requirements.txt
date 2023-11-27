@@ -1,5 +1,5 @@
 numpy<1.25.0,>=1.17.3
-cv2
+opencv-python
 scipy
 rospy
 tf2-ros
