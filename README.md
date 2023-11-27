@@ -91,7 +91,9 @@ target_pose.header.frame_id = planning_link
 target_pose.pose.position = Point(x=target_x, y=target_y, z=target_z)
 target_pose.pose.orientation = Quaternion(*tf.transformations.quaternion_from_euler(r, p, y))
 
-# Set up constraints for fixed orientation and cyclindrical volumes with 1 second initial planning time and a max of 3 planning retries, doubling planning time every retry with a max planning time of 5 seconds
+# Set up constraints for fixed orientation and cyclindrical volumes with 1 second initial 
+planning time and a max of 3 planning retries, 
+doubling planning time every retry with a max planning time of 5 seconds
 constraints = PathPlanningConstraints()
 constraints.orientation_constraint_type = PathPlanningConstraints.FIXED_ORIENT
 constraints.volume_constraint_type = PathPlanningConstraints.CYLINDER
