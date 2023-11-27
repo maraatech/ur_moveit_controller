@@ -11,7 +11,7 @@ from math import pi
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker
 from moveit_commander.conversions import pose_to_list
-import visualization_msgs
+
 import time
 
 def all_close(goal, actual, tolerance):
